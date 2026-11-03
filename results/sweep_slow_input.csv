@@ -1,0 +1,15 @@
+kernel,pos_percent,mean_cycles
+dynamic,0,203.4
+static,0,353
+dynamic,10,221.6
+static,10,353
+dynamic,25,245.6
+static,25,353
+dynamic,50,274.4
+static,50,353
+dynamic,75,320.2
+static,75,353
+dynamic,90,341.4
+static,90,353
+dynamic,100,353
+static,100,353
