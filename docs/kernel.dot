@@ -1,0 +1,46 @@
+digraph kernel_dynamic {
+  node [shape=box, style=rounded, fontname="Helvetica"];
+  { node [style="rounded,filled", fillcolor="#dde8f5"]; oehb_i; tehb_i; oehb_s; tehb_s; }
+  { node [shape=oval]; start; x [label="x stream"]; result; }
+
+  // start
+  start -> fork_start;
+  fork_start -> const_i0;
+  fork_start -> const_s1;
+
+  // i loop
+  const_i0 -> merge_i;
+  add_i -> merge_i [label="i + 1"];
+  merge_i -> oehb_i -> tehb_i -> fork_i;
+  fork_i -> cmp_lt [label="i"];
+  const_n -> cmp_lt [label="N"];
+  cmp_lt -> fork_lc [label="i < N"];
+  fork_i -> cond_br_i;
+  fork_lc -> cond_br_i [style=dashed];
+  cond_br_i -> add_i [label="T"];
+  const_1 -> add_i;
+  cond_br_i -> sink_i [label="F"];
+
+  // s loop
+  const_s1 -> merge_s;
+  merge_body -> merge_s [label="new s"];
+  merge_s -> oehb_s -> tehb_s -> cond_br_s;
+  fork_lc -> cond_br_s [style=dashed];
+  cond_br_s -> result [label="F"];
+  cond_br_s -> cond_br_sb [label="T"];
+
+  // loop body
+  x -> fork_x;
+  fork_x -> cmp_pos;
+  const_0 -> cmp_pos;
+  cmp_pos -> fork_pc [label="x > 0"];
+  fork_pc -> cond_br_sb [style=dashed];
+  fork_pc -> cond_br_x [style=dashed];
+  fork_x -> cond_br_x;
+  cond_br_sb -> mul_s [label="T"];
+  cond_br_x -> mul_s [label="T"];
+  cond_br_sb -> add_s [label="F"];
+  cond_br_x -> add_s [label="F"];
+  mul_s -> merge_body;
+  add_s -> merge_body;
+}

@@ -1,0 +1,75 @@
+digraph testbench_patterns {
+  rankdir=LR;
+  bgcolor="white";
+  compound=true;
+  graph [fontname="Helvetica", fontsize=13, labelloc="t", nodesep=0.35, ranksep=0.7];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+         margin="0.16,0.09", height=0.4];
+  edge  [fontname="Helvetica", fontsize=8, color="#555555", arrowsize=0.7];
+
+  label="The same two blocks bookend every test — only the middle changes\n\n";
+
+  // Defined last renders at the top, so these are in reverse reading order:
+  // kernel (most complex) first, toolkit (simplest) last.
+
+  // ---------------- tb_kernel ----------------
+  subgraph cluster_4 {
+    label="tb_kernel   —   same shape again, but the middle is now the entire 30-instance circuit";
+    labeljust="l"; style="rounded"; color="#bbbbbb"; fontcolor="#333333"; fontsize=11; margin=12;
+    k_src0 [label="stim_source\n(start)", fillcolor="#dde8f5"];
+    k_src1 [label="stim_source\n(x stream)", fillcolor="#dde8f5"];
+    k_dut  [label="kernel_dynamic\nor kernel_static", fillcolor="#ffe2bf", color="#d98324", penwidth=1.8];
+    k_snk  [label="check_sink\n(expects 1 answer:\nthe reference model's)", fillcolor="#dde8f5"];
+    k_src0 -> k_dut;
+    k_src1 -> k_dut;
+    k_dut  -> k_snk;
+  }
+
+  // ---------------- tb_operators ----------------
+  subgraph cluster_3 {
+    label="tb_operators   —   TWO sources feed one operator (it must wait for both)";
+    labeljust="l"; style="rounded"; color="#bbbbbb"; fontcolor="#333333"; fontsize=11; margin=12;
+    o_src0 [label="stim_source\n(lhs)", fillcolor="#dde8f5"];
+    o_src1 [label="stim_source\n(rhs)", fillcolor="#dde8f5"];
+    o_dut  [label="mul\n(4-cycle pipeline)", fillcolor="#ffe2bf", color="#d98324", penwidth=1.8];
+    o_snk  [label="check_sink", fillcolor="#dde8f5"];
+    o_src0 -> o_dut;
+    o_src1 -> o_dut;
+    o_dut  -> o_snk;
+  }
+
+  // ---------------- tb_fork_join ----------------
+  subgraph cluster_2 {
+    label="tb_fork_join   —   one source fans out to THREE sinks, each stalling differently";
+    labeljust="l"; style="rounded"; color="#bbbbbb"; fontcolor="#333333"; fontsize=11; margin=12;
+    f_src  [label="stim_source", fillcolor="#dde8f5"];
+    f_dut  [label="fork", fillcolor="#ffe2bf", color="#d98324", penwidth=1.8];
+    f_snk0 [label="check_sink\nready 90%", fillcolor="#dde8f5"];
+    f_snk1 [label="check_sink\nready 50%", fillcolor="#dde8f5"];
+    f_snk2 [label="check_sink\nready 20%", fillcolor="#dde8f5"];
+    f_src -> f_dut;
+    f_dut -> f_snk0;
+    f_dut -> f_snk1;
+    f_dut -> f_snk2;
+  }
+
+  // ---------------- tb_buffers ----------------
+  subgraph cluster_1 {
+    label="tb_buffers   —   one source, one DUT, one sink  (×3 in parallel: oehb, tehb, fifo)";
+    labeljust="l"; style="rounded"; color="#bbbbbb"; fontcolor="#333333"; fontsize=11; margin=12;
+    b_src [label="stim_source", fillcolor="#dde8f5"];
+    b_dut [label="oehb", fillcolor="#ffe2bf", color="#d98324", penwidth=1.8];
+    b_snk [label="check_sink", fillcolor="#dde8f5"];
+    b_src -> b_dut;
+    b_dut -> b_snk;
+  }
+
+  // ---------------- tb_toolkit ----------------
+  subgraph cluster_0 {
+    label="tb_toolkit   —   nothing in the middle: proves the harness itself is trustworthy";
+    labeljust="l"; style="rounded"; color="#bbbbbb"; fontcolor="#333333"; fontsize=11; margin=12;
+    t_src [label="stim_source", fillcolor="#dde8f5"];
+    t_snk [label="check_sink",  fillcolor="#dde8f5"];
+    t_src -> t_snk [label=" wired straight together "];
+  }
+}

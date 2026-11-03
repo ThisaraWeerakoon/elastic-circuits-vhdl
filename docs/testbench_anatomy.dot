@@ -1,0 +1,56 @@
+digraph testbench_anatomy {
+  rankdir=LR;
+  bgcolor="white";
+  graph [fontname="Helvetica", fontsize=13, labelloc="t", nodesep=0.5, ranksep=0.9];
+  node  [shape=box, style="rounded,filled", fillcolor="white",
+         fontname="Helvetica", fontsize=11, margin="0.20,0.13"];
+  edge  [fontname="Helvetica", fontsize=9, color="#444444"];
+
+  label="Anatomy of every testbench in the project  (tb_kernel shown as the example)\n\n";
+
+  clkrst [label="clock + reset generator\l\lclk <= not clk after 5 ns\lrst <= '0' after 22 ns\l",
+          fillcolor="#eeeeee", fontsize=10];
+
+  subgraph cluster_left {
+    label="TEST HARNESS — stands in for whatever\nwould really feed your design";
+    labeljust="l";
+    style="rounded,dashed";
+    color="#6a93bd";
+    fontcolor="#3d6485";
+    fontsize=10;
+    margin=14;
+
+    src_start [label="stim_source\l(start token)\l", fillcolor="#dde8f5"];
+    src_x     [label="stim_source\l(x stream)\l\l• sends a fixed list\l• random idle gaps\l• holds valid until taken\l",
+               fillcolor="#dde8f5"];
+  }
+
+  dut [label="kernel_dynamic\l\lTHE ONLY THING\lACTUALLY UNDER TEST\l",
+       fillcolor="#ffe2bf", penwidth=2.2, color="#d98324"];
+
+  subgraph cluster_right {
+    label="TEST HARNESS — stands in for whatever\nwould really consume your design's output";
+    labeljust="l";
+    style="rounded,dashed";
+    color="#6a93bd";
+    fontcolor="#3d6485";
+    fontsize=10;
+    margin=14;
+
+    snk [label="check_sink\l(result)\l\l• randomly refuses to accept\l• checks value AND order\l• embedded protocol checker\l",
+         fillcolor="#dde8f5"];
+  }
+
+  watchdog [label="finish process  (watchdog)\l\lwait until done = '1' for 10 us\lassert ... severity failure\lreport \"PASSED\" / std.env.finish\l",
+            fillcolor="#eeeeee", fontsize=10];
+
+  src_start -> dut [dir=both, label="  start channel\l  valid / ready only\l"];
+  src_x     -> dut [dir=both, label="  x channel\l  data + valid  →\l  ←  ready\l"];
+  dut       -> snk [dir=both, label="  result channel\l  data + valid  →\l  ←  ready\l"];
+  snk       -> watchdog [label="  done", style=dashed, color="#2e7d32", fontcolor="#2e7d32"];
+
+  clkrst -> src_start [style=dotted, color="#b0b0b0", arrowsize=0.6];
+  clkrst -> src_x     [style=dotted, color="#b0b0b0", arrowsize=0.6];
+  clkrst -> dut       [style=dotted, color="#b0b0b0", arrowsize=0.6];
+  clkrst -> snk       [style=dotted, color="#b0b0b0", arrowsize=0.6];
+}
