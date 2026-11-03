@@ -1,0 +1,12 @@
+{
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/build": true,
+    "**/*.cf": true
+  },
+  "[vhdl]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  }
+}
