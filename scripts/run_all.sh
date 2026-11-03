@@ -6,4 +6,6 @@ for f in tb/tb_*.vhd; do
   echo "=== $name ==="
   scripts/sim.sh "$name"
 done
+echo "=== tb_kernel (static) ==="
+scripts/sim.sh tb_kernel -gKERNEL=static
 echo "ALL TESTS PASSED"
