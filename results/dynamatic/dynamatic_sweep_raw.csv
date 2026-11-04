@@ -1,0 +1,8 @@
+pos_percent,cycles,result_hex,match
+0,131,0xffffff8f,PASS
+10,141,0xfffffe79,PASS
+25,155,0xffffdfe8,PASS
+50,191,0xff7871e8,PASS
+75,221,0xb23310b8,PASS
+90,245,0x8b0227cc,PASS
+100,259,0xa4800000,PASS
