@@ -3,3 +3,5 @@ build/
 *.vcd
 *.o
 *.cf
+ElasticFlow*.md
+questions.txt
