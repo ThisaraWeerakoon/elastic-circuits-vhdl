@@ -81,12 +81,18 @@ circuit with mine, both structurally and on cycle count.
 Writeup: [`docs/dynamatic_comparison.md`](docs/dynamatic_comparison.md).
 
 The short version: the curves cross. My circuit is faster when the fast path
-dominates, Dynamatic's is faster when the slow path does. Most of my advantage
-comes from an interface difference rather than from better scheduling (I stream
-`x` in; Dynamatic generates a proper BRAM interface and the load sits in the
-loop). Dynamatic's advantage is real though: its buffer placement gets the
-multiply path down to II = 4, which is exactly the multiplier latency, while my
-hand placement sits at II = 5.
+dominates, Dynamatic's is faster when the slow path does. Both halves of that
+come from one buffer. I put the `s` loop's opaque buffer at the loop header,
+where both paths pay for it (II 1 add, II 5 multiply). Dynamatic's MILP put its
+opaque buffers on the add branch only, because the multiplier's pipeline
+registers already cut the multiply loop (II 2 add, II 4 multiply).
+
+I first put my fast-path advantage down to the memory interface (I stream `x`
+in, Dynamatic generates a BRAM and the load sits in the loop). That was wrong.
+Moving my buffers to where Dynamatic put them reproduces its IIs exactly with
+my streamed input. The interface accounts for only a constant 2 cycles. With
+one buffer on the add branch, my circuit gets II 1 and II 4, which is at or
+below both original circuits at every input mix.
 
 **5. While reading the FPGA 2020 buffer placement paper I started wondering what
 the other algorithms would do**, so I ran the ones my build supports and
@@ -120,9 +126,11 @@ I would rather say this plainly than have it inferred.
   circuit would actually close timing. Cycles are only half of runtime.
 - **The component library is not independent work.** I read Dynamatic's
   implementations while writing mine.
-- **The Dynamatic comparison has a confound I could not remove.** Different
-  memory interfaces, as described above. I flag it in the writeup rather than
-  quoting a single speedup number.
+- **The Dynamatic comparison still has a confound.** Different memory
+  interfaces, as described above. Moving my buffer showed it is not what
+  separates the IIs and that it costs a constant 2 cycles here, but I have not
+  removed it. I flag it in the writeup rather than quoting a single speedup
+  number.
 - **Buffer placement used CBC, not Gurobi.** Gurobi needs a licence I do not
   have. Two of the five algorithms (`costaware`, `mapbuf`) would not run at all
   on CBC, so I could only compare three.

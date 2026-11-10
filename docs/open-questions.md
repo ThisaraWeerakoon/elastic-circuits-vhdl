@@ -3,20 +3,24 @@
 Things I noticed while doing this and could not resolve, or did not have the
 tools to check. Roughly in the order they bother me.
 
-## 1. I cannot separate scheduling quality from the interface difference
+## 1. Mostly answered: the interface was not the fast-path difference
 
 My circuit takes `x` as a stream through a handshake port. Dynamatic generates
-a BRAM plus a memory controller, and the load ends up inside the loop. That
-costs it roughly one cycle per iteration on the fast path.
+a BRAM plus a memory controller, and the load ends up inside the loop. I used
+to guess that this was almost all of my fast-path advantage, because the gap is
+almost exactly one cycle per iteration.
 
-So when my circuit wins at low positive-input rates, I do not know how much of
-that is scheduling and how much is just "I was handed the data and it had to go
-and fetch it". My guess is almost all of it is the interface, because the gap
-is almost exactly one cycle per iteration, but I have not proved that.
+That guess was wrong. The gap comes from where the `s` loop's opaque buffer
+sits (see
+[`dynamatic_comparison.md`](dynamatic_comparison.md#where-the-difference-comes-from-one-buffer-on-the-s-loop)).
+With `ADD_BUFFERS = 2` my circuit has Dynamatic's buffer layout on that loop
+and gets Dynamatic's IIs exactly (2 and 4) with a streamed input. What is left
+is a constant 2 cycles, which is the interface's real cost here.
 
-To actually separate them I would have to either give my circuit a real memory
-interface, or get Dynamatic to treat `x` as a stream argument. I did not find a
-clean way to do the second one.
+What is still open is whether the interface would cost more in a circuit with
+several iterations in flight, where loads could start to queue. Settling that
+needs a real memory interface on my side, or a way to get Dynamatic to treat
+`x` as a stream argument. I did not find a clean way to do the second one.
 
 ## 2. I have no timing numbers, so half of the comparison is missing
 
@@ -32,12 +36,19 @@ and `fpl22` produces one that can, in which case my ranking is backwards.
 
 I would need Vivado to find out. I have not run it.
 
-## 3. Why is Dynamatic's fast path II = 2 and not 1?
+## 3. Why did the MILP put two buffers on the add path and not one?
 
-I attribute it to the load being in the loop, which lines up with the numbers,
-but I have not traced a waveform to confirm which channel is actually the
-limiter. It could also be the `control_merge`, or a buffer the MILP placed for
-a reason I have not worked out.
+The mechanism of Dynamatic's fast-path II = 2 is now clear. There are two
+opaque buffers on its add loop (`buffer3` before `addi0` and `buffer8` after
+it), and putting two on my add branch reproduces II = 2 exactly. One is enough
+for correctness, and with one my circuit gets II = 1.
+
+What I do not know is why the MILP chose two. The `i` counter loop also has
+two opaque buffers (`buffer0`, `buffer9`) and sits at II 2, so the add path
+going faster would not help while that loop holds at 2, and the solver may
+just have had no reason to prefer one. Timing does not look like the cause,
+since the worst data path `fpga20` models is 2.718 ns against a 4 ns target.
+I have not traced a waveform to confirm which loop is actually the limiter.
 
 ## 4. The branch is compiled away but the circuit still behaves dynamically
 

@@ -20,7 +20,8 @@ def run(kernel, pos, seed, opts):
     out = subprocess.run(
         ["scripts/sim.sh", "tb_kernel", f"-gKERNEL={kernel}", f"-gN={opts.n}",
          f"-gPOS_PERCENT={pos}", f"-gSEED={seed}",
-         f"-gMUL_LATENCY={opts.mul_latency}", f"-gX_PERCENT={opts.x_percent}"],
+         f"-gMUL_LATENCY={opts.mul_latency}", f"-gX_PERCENT={opts.x_percent}",
+         f"-gADD_BUFFERS={opts.add_buffers}"],
         capture_output=True, text=True, check=True).stdout
     match = PATTERN.search(out)
     if match is None:
@@ -34,6 +35,9 @@ def main():
     parser.add_argument("--mul-latency", type=int, default=4, help="multiplier pipeline depth")
     parser.add_argument("--x-percent", type=int, default=100,
                         help="chance the x source offers a value each cycle")
+    parser.add_argument("--add-buffers", type=int, default=0,
+                        help="dynamic kernel's s-loop buffers: 0 = one at the loop header, "
+                             "k = k on the add branch only")
     parser.add_argument("--name", default="sweep", help="base name for the output files")
     opts = parser.parse_args()
 
@@ -59,7 +63,10 @@ def main():
         ax.plot(xs, ys, marker="o", label=kernel)
     ax.set_xlabel("Positive x values (%), i.e. how often the multiply path runs")
     ax.set_ylabel(f"Cycles for N = {opts.n} (mean of {len(SEEDS)} seeds)")
-    ax.set_title(f"mul latency {opts.mul_latency}, x offered {opts.x_percent}% of cycles")
+    title = f"mul latency {opts.mul_latency}, x offered {opts.x_percent}% of cycles"
+    if opts.add_buffers:
+        title += f", {opts.add_buffers} buffer(s) on the add branch"
+    ax.set_title(title)
     ax.legend()
     ax.grid(alpha=0.3)
     fig.tight_layout()

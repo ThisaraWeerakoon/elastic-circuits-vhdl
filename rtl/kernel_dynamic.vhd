@@ -12,10 +12,19 @@ use work.elastic_pkg.all;
 --   return s;
 --
 -- x[] arrives as a stream, one element per iteration.
+--
+-- The s loop needs an opaque buffer to cut its valid path, and where it sits
+-- sets the II of each path. The multiplier's pipeline registers already cut
+-- the multiply path, so only the add path strictly needs one.
+--   ADD_BUFFERS = 0: one oehb at the loop header, shared by both paths
+--                    (the original placement: II 1 add, II MUL_LATENCY + 1 mul)
+--   ADD_BUFFERS = k: no header oehb, k oehbs on the add branch only
+--                    (II k add, II MUL_LATENCY mul)
 entity kernel_dynamic is
   generic (
     N           : positive := 16;
-    MUL_LATENCY : positive := 4
+    MUL_LATENCY : positive := 4;
+    ADD_BUFFERS : natural  := 0
   );
   port (
     clk, rst     : in  std_logic;
@@ -84,6 +93,8 @@ architecture rtl of kernel_dynamic is
   signal x_add_v, x_add_r         : std_logic;
   signal body_in                  : data_array(1 downto 0)(31 downto 0);  -- 0: product, 1: sum
   signal body_in_v, body_in_r     : std_logic_vector(1 downto 0);
+  signal s_sum                    : data_array(0 to ADD_BUFFERS)(31 downto 0);  -- add result, then after each add-branch oehb
+  signal s_sum_v, s_sum_r         : std_logic_vector(0 to ADD_BUFFERS);
 begin
   ------------------------------------------------------------------ start
   -- One start token becomes the initial values i = 0 and s = 1.
@@ -155,10 +166,17 @@ begin
   merge_s: entity work.merge
     port map (clk => clk, rst => rst, ins => s_mrg_in, ins_valid => s_mrg_in_v,
               ins_ready => s_mrg_in_r, outs => s_mrg, outs_valid => s_mrg_v, outs_ready => s_mrg_r);
-  oehb_s: entity work.oehb
-    port map (clk => clk, rst => rst, ins => s_mrg, ins_valid => s_mrg_v, ins_ready => s_mrg_r,
-              outs => s_ob, outs_valid => s_ob_v, outs_ready => s_ob_r);
-  tehb_s: entity work.tehb
+  gen_header_buf: if ADD_BUFFERS = 0 generate
+    oehb_s: entity work.oehb                        -- shared, so both paths pay its cycle
+      port map (clk => clk, rst => rst, ins => s_mrg, ins_valid => s_mrg_v, ins_ready => s_mrg_r,
+                outs => s_ob, outs_valid => s_ob_v, outs_ready => s_ob_r);
+  end generate;
+  gen_no_header_buf: if ADD_BUFFERS > 0 generate    -- valid path is cut on the add branch instead
+    s_ob    <= s_mrg;
+    s_ob_v  <= s_mrg_v;
+    s_mrg_r <= s_ob_r;
+  end generate;
+  tehb_s: entity work.tehb                          -- cuts the ready path (mul's ready is combinational)
     port map (clk => clk, rst => rst, ins => s_ob, ins_valid => s_ob_v, ins_ready => s_ob_r,
               outs => s_buf, outs_valid => s_buf_v, outs_ready => s_buf_r);
   cond_br_s: entity work.cond_br                    -- loop done? s leaves as the result
@@ -211,7 +229,16 @@ begin
     port map (clk => clk, rst => rst,
               lhs => s_add, lhs_valid => s_add_v, lhs_ready => s_add_r,
               rhs => x_add, rhs_valid => x_add_v, rhs_ready => x_add_r,
-              result => body_in(1), result_valid => body_in_v(1), result_ready => body_in_r(1));
+              result => s_sum(0), result_valid => s_sum_v(0), result_ready => s_sum_r(0));
+  gen_add_bufs: for k in 1 to ADD_BUFFERS generate  -- empty when ADD_BUFFERS = 0
+    oehb_add: entity work.oehb
+      port map (clk => clk, rst => rst,
+                ins => s_sum(k - 1), ins_valid => s_sum_v(k - 1), ins_ready => s_sum_r(k - 1),
+                outs => s_sum(k), outs_valid => s_sum_v(k), outs_ready => s_sum_r(k));
+  end generate;
+  body_in(1)           <= s_sum(ADD_BUFFERS);
+  body_in_v(1)         <= s_sum_v(ADD_BUFFERS);
+  s_sum_r(ADD_BUFFERS) <= body_in_r(1);
   merge_body: entity work.merge                     -- end of the if: new s goes back to merge_s
     port map (clk => clk, rst => rst, ins => body_in, ins_valid => body_in_v,
               ins_ready => body_in_r, outs => s_mrg_in(1), outs_valid => s_mrg_in_v(1),
