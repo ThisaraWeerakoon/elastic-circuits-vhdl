@@ -10,6 +10,7 @@ entity tb_kernel is
     POS_PERCENT : natural  := 50;          -- share of x values that are positive
     X_PERCENT   : natural  := 100;         -- chance the x source offers a value each cycle
     MUL_LATENCY : positive := 4;
+    ADD_BUFFERS : natural  := 0;           -- s-loop buffer placement, dynamic kernel only
     SEED        : positive := 1
   );
 end entity;
@@ -81,7 +82,7 @@ begin
 
   gen_dynamic: if KERNEL = "dynamic" generate
     dut: entity work.kernel_dynamic
-      generic map (N => N, MUL_LATENCY => MUL_LATENCY)
+      generic map (N => N, MUL_LATENCY => MUL_LATENCY, ADD_BUFFERS => ADD_BUFFERS)
       port map (clk => clk, rst => rst, start_valid => start_v, start_ready => start_r,
                 x => x, x_valid => x_v, x_ready => x_r,
                 result => res, result_valid => res_v, result_ready => res_r);
